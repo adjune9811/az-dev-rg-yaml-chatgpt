@@ -1,0 +1,49 @@
+trigger:
+- main
+
+variables:
+  terraformVersion: '1.0.11'
+  azureServiceConnection: 'TF-Jenkins-SPN'  # Replace with your service connection name
+  azureSubscription: 'ec49dde3-01ff-476f-992d-5460ebb26e8d'  # Replace with your Azure subscription ID
+  terraformWorkingDirectory: 'az-dev-rg-yaml'  # Replace with the directory containing your Terraform files
+
+stages:
+- stage: Terraform
+  jobs:
+  - job: 'TerraformDeployment'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: UseTerraform@0
+      inputs:
+        terraformVersion: $(terraformVersion)
+    
+    - script: |
+        terraform --version
+      displayName: 'Check Terraform version'
+    
+    - script: |
+        terraform init
+      displayName: 'Terraform Init'
+      workingDirectory: $(terraformWorkingDirectory)
+    
+    - script: |
+        terraform plan -out=tfplan -input=false
+      displayName: 'Terraform Plan'
+      workingDirectory: $(terraformWorkingDirectory)
+      env:
+        ARM_SUBSCRIPTION_ID: $(azureSubscription)
+        ARM_CLIENT_ID: $(servicePrincipalId)  # Use variables to securely pass secrets
+        ARM_CLIENT_SECRET: $(servicePrincipalKey)
+        ARM_TENANT_ID: $(tenantId)
+    
+    - script: |
+        terraform apply -input=false tfplan
+      displayName: 'Terraform Apply'
+      workingDirectory: $(terraformWorkingDirectory)
+      env:
+        ARM_SUBSCRIPTION_ID: $(azureSubscription)
+        ARM_CLIENT_ID: $(servicePrincipalId)
+        ARM_CLIENT_SECRET: $(servicePrincipalKey)
+        ARM_TENANT_ID: $(tenantId)
